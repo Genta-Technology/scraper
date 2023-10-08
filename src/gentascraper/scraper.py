@@ -48,7 +48,7 @@ class Scraper:
 
         # check if data is a URL or HTML string
         if data.startswith('http'):
-            self.__get_html(data + '.aspx')
+            self.__get_html(data)
         else:
             self.__html = data
         
