@@ -24,7 +24,7 @@ import numbers
 
 import cchardet as chardet
 
-from typing import Dict, Optional
+from typing import List, Dict, Optional
 from bs4 import BeautifulSoup, SoupStrainer
 
 from .utilities import is_numeric
@@ -59,10 +59,6 @@ class Scraper:
         )
 
         self.__get_meta()
-        self.__get_site_name()
-        self.__get_author()
-        self.__get_date()
-        self.__get_title()
         self.__preprocess()
 
     def __get_html(self, url: str) -> None:
@@ -75,23 +71,23 @@ class Scraper:
 
         self.__html = requests.get(url).text
 
-    def __get_date(self) -> None:
+    def __get_date(self) -> str:
         """
         Gets the date from the meta tags.
         """
 
-        self.__date = next((self.__meta[key] for key in self.__meta \
+        return next((self.__meta[key] for key in self.__meta \
             if 'date' in key.lower() or 'time' in key.lower()), None)
     
-    def __get_site_name(self) -> None:
+    def __get_site_name(self) -> str:
         """
         Gets the site name from the meta tags.
         """
 
-        self.__site_name = next((self.__meta[key] for key in self.__meta \
+        return next((self.__meta[key] for key in self.__meta \
             if 'site' in key.lower()), None)
 
-    def __get_author(self) -> None:
+    def __get_author(self) -> List[str]:
         """
         Gets the author from the meta tags.
 
@@ -99,12 +95,11 @@ class Scraper:
         :type meta: dict
         """
 
-        self.__author = next((self.__meta[key] for key in self.__meta \
+        return [self.__meta[key] for key in self.__meta \
             if ('author' in key.lower() or 'writer' in key.lower()) and \
-               ('content' in key.lower() or 'article' in key.lower()) and \
-               (not is_numeric(self.__meta[key]))), None)
+               (not is_numeric(self.__meta[key]))]
 
-    def __get_title(self) -> None:
+    def __get_title(self) -> str:
         """
         Gets the title from the meta tags.
 
@@ -112,11 +107,13 @@ class Scraper:
         :type meta: dict
         """
 
-        self.__title = next((self.__meta[key] for key in self.__meta \
+        title = next((self.__meta[key] for key in self.__meta \
             if 'title' in key.lower()), None)
     
-        if self.__title is None:
-            self.__title = self.__soup.title.string
+        if title is None:
+            title = self.__soup.title.string
+    
+        return title
 
     def __get_meta(self) -> None:
         """
@@ -139,7 +136,7 @@ class Scraper:
 
         body = self.__soup.body
 
-        unwanted_elements = ['script', 'link', 'style', 'meta', 'ul', 'iframe', 'i', 'br', 'noscript']
+        unwanted_elements = ['script', 'link', 'style', 'meta', 'ul', 'iframe', 'i', 'br', 'noscript', 'aside']
         for element in unwanted_elements:
             [s.extract() for s in body(element)]
 
@@ -192,10 +189,10 @@ class Scraper:
         :rtype: str
         """
 
-        return self.__site_name
+        return self.__get_site_name()
     
     @property
-    def author(self) -> str:
+    def author(self) -> List[str]:
         """
         Gets the author.
 
@@ -203,7 +200,7 @@ class Scraper:
         :rtype: str
         """
 
-        return self.__author
+        return self.__get_author()
 
     @property
     def date(self) -> str:
@@ -214,7 +211,7 @@ class Scraper:
         :rtype: str
         """
 
-        return self.__date
+        return self.__get_date()
 
     @property
     def title(self) -> str:
@@ -225,7 +222,7 @@ class Scraper:
         :rtype: str
         """
 
-        return self.__title
+        return self.__get_title()
 
     @property
     def body(self) -> str:
