@@ -35,14 +35,14 @@ def test_get_title():
     assert test_case.title.lower() == "Jokowi Benarkan Akan Bertemu Syahrul Yasin Limpo di Istana Malam Ini".lower()
 
 def test_get_author():
-    assert test_case.author.lower() == "Nicholas Ryan Aditya".lower()
+    assert "Nicholas Ryan Aditya" in test_case.author
 
 def test_get_date():
     assert test_case.date.lower() == "2023-10-08 13:17:39".lower() or \
            test_case.date.lower() == "2023-10-08T06:17:39+00:00".lower()
     
 def test_length_preprocessed():
-    assert len(test_case.body) < 150000
+    assert len(test_case.body.split()) < 1000
 
 def test_time_to_scrape():
     html = requests.get("https://nasional.kompas.com/read/2023/10/08/13173901/" + \
@@ -51,4 +51,49 @@ def test_time_to_scrape():
     Scraper(html)
     end = time()
     time_elapsed = end - start
-    assert time_elapsed < 0.06
+    assert time_elapsed < 0.05
+
+test_case_2 = Scraper("https://www.merdeka.com/peristiwa/reaksi-muhammadiyah-" + \
+                      "hingga-mui-soal-konflik-hamas-vs-israel-memanas-33021-mvk.html")
+
+def test_get_title_2():
+    assert test_case_2.title.lower() == "Reaksi Muhammadiyah hingga MUI Soal Konflik Hamas Vs Israel Memanas".lower()
+
+def test_length_preprocessed_2():
+    assert len(test_case_2.body.split()) < 1000
+
+def test_time_to_scrape_2():
+    html = requests.get("https://www.merdeka.com/peristiwa/reaksi-muhammadiyah" + \
+                        "-hingga-mui-soal-konflik-hamas-vs-israel-memanas-33021-mvk.html").text
+    start = time()
+    Scraper(html)
+    end = time()
+    time_elapsed = end - start
+    assert time_elapsed < 0.05
+
+test_case_3 = Scraper("https://www.cnnindonesia.com/nasional/20231008174210-617-" + \
+                      "1008627/anies-usul-pemilik-lahan-terdampak-pembangunan-tol-dapat-bagian-saham")
+
+def test_get_title_3():
+    assert test_case_3.title.lower() == "Anies Usul Pemilik Lahan Terdampak Pembangunan Tol Dapat Bagian Saham".lower()
+
+def test_get_author_3():
+    assert "CNN Indonesia" in test_case_3.author
+
+def test_get_date_3():
+    assert test_case_3.date.lower() == "2023-10-08 17:42:10".lower() or \
+           test_case_3.date.lower() == "2023-10-08 18:20:04".lower()
+
+def test_length_preprocessed_3():
+    assert len(test_case_3.body.split()) < 1000
+
+def test_time_to_scrape_3():
+    html = requests.get("https://www.cnnindonesia.com/nasional/20231008174210-617-1008627/" + \
+                        "anies-usul-pemilik-lahan-terdampak-pembangunan-tol-dapat-bagian-saham").text
+    
+    start = time()
+    Scraper(html)
+    end = time()
+
+    time_elapsed = end - start
+    assert time_elapsed < 0.05
