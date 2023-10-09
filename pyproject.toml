@@ -27,7 +27,8 @@ classifiers = [
 dependencies = [
   "requests",
   "beautifulsoup4",
-  "lxml"
+  "lxml",
+  "newspaper3k"
 ]
 
 [project.urls]
