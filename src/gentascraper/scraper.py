@@ -20,12 +20,12 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 import re
 import requests
-import numbers
 
-import cchardet as chardet
+import bs4.element as elem
 
 from typing import List, Dict, Optional
-from bs4 import BeautifulSoup, SoupStrainer
+from bs4 import BeautifulSoup
+from bs4.element import Comment
 
 from .utilities import is_numeric
 
@@ -52,7 +52,8 @@ class Scraper:
         else:
             self.__html = data
         
-        self.__html = re.sub(r'<!.*?->','', self.__html)
+        self.__html = re.sub(r'<!(.*?)->','', self.__html)
+        self.__html = re.sub(r'href=".*?"', '', self.__html)
         self.__soup = BeautifulSoup(
             self.__html, 
             'lxml'
@@ -60,6 +61,7 @@ class Scraper:
 
         self.__get_meta()
         self.__preprocess()
+        self.__get_article()
 
     def __get_html(self, url: str) -> None:
         """
@@ -90,9 +92,6 @@ class Scraper:
     def __get_author(self) -> List[str]:
         """
         Gets the author from the meta tags.
-
-        :param meta: The meta tags.
-        :type meta: dict
         """
 
         return [self.__meta[key] for key in self.__meta \
@@ -102,9 +101,6 @@ class Scraper:
     def __get_title(self) -> str:
         """
         Gets the title from the meta tags.
-
-        :param meta: The meta tags.
-        :type meta: dict
         """
 
         title = next((self.__meta[key] for key in self.__meta \
@@ -118,45 +114,73 @@ class Scraper:
     def __get_meta(self) -> None:
         """
         Gets the meta tags from the HTML string.
-
-        :param html: The HTML string to get the meta tags from.
-        :type html: str
         """
-
+        
         self.__meta = {tag['name']: tag['content'] for tag in \
             self.__soup.find_all('meta') if tag.has_attr('name')}
 
     def __preprocess(self) -> None:
         """
         Preprocesses the HTML string by removing all script tags, links, styles, meta tags, item list, and comments.
-
-        :param html: The HTML string to preprocess.
-        :type html: str
         """
 
         body = self.__soup.body
 
-        unwanted_elements = ['script', 'link', 'style', 'meta', 'ul', 'iframe', 'i', 'br', 'noscript', 'aside']
-        for element in unwanted_elements:
-            [s.extract() for s in body(element)]
+        unwanted_tags = ['script', 'style', 'meta', 'li', 'ul', 
+                         'iframe', 'br', 'noscript', 'aside', 'nav',
+                         'form', 'input', 'button', 'select', 'option',
+                         'textarea', 'label', 'fieldset', 'legend', 'datalist',
+                         'output', 'progress', 'meter', 'details', 'summary',
+                         'menu', 'menuitem', 'dialog']
+        for tag in body(unwanted_tags):
+            tag.extract()
 
-        id_class_pattern = re.compile(r'ad|ads|comment|disqus|share|related|' + \
-                                    r'google|sso|recommendation|pagination|' + \
-                                    r'footer|header|menu|nav|sidebar|widget|' + \
-                                    r'social|facebook|twitter|instagram|' + \
-                                    r'youtube|linkedin|whatsapp|telegram|' + \
-                                    r'line|tiktok|pinterest|tumblr|reddit|vimeo|' + \
-                                    r'snap|modal|overlay|popup|banner|' + \
-                                    r'cookie|consent|gdpr|privacy|terms|' + \
-                                    r'login|register|subscribe|newsletter|' + \
-                                    r'contact|search|form|input|button|' + \
-                                    r'video|audio|image|picture|gallery|')
+        id_class_pattern = re.compile(r'share|related|socmed|social|media|' + \
+                                      r'social|facebook|twitter|instagram|' + \
+                                      r'youtube|linkedin|whatsapp|telegram|' + \
+                                      r'line|tiktok|pinterest|tumblr|reddit|vimeo')
 
         tags_with_attr = [('div', 'id'), ('div', 'class'), ('span', 'id'), ('span', 'class')]
         for tag, attr in tags_with_attr:
-            [s.extract() for s in body.find_all(tag, {attr: id_class_pattern})]
+            [s.decompose() for s in body.find_all(tag, {attr: id_class_pattern})]
 
         self.__body = body.prettify()
+
+    def __get_article(self) -> None:
+        """
+        Gets the article from the HTML string.
+        """
+
+        # extract text from the body
+        self.__article = self.text_from_html(self.__soup)
+        
+    @staticmethod
+    def tag_visible(element: elem.Tag) -> bool:
+        """
+        Checks if the tag is visible.
+
+        :param element: The element to check.
+        :type element: bs4.element.Tag
+        :return: True if the tag is visible, False otherwise.
+        """
+
+        return not (element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]'] \
+                    or isinstance(element, Comment))
+
+    @staticmethod
+    def text_from_html(soup: BeautifulSoup) -> str:
+        """
+        Gets the text from the HTML string.
+
+        :param soup: The HTML string.
+        :type soup: bs4.BeautifulSoup
+        :return: The text from the HTML string.
+        :rtype: str
+        """
+
+        texts = soup.findAll(text=True)
+        visible_texts = filter(Scraper.tag_visible, texts)  
+        return u" ".join(t.strip() for t in visible_texts)
     
     @property
     def html(self) -> str:
@@ -234,3 +258,14 @@ class Scraper:
         """
 
         return self.__body
+    
+    @property
+    def article(self) -> str:
+        """
+        Gets the article.
+
+        :return: The article.
+        :rtype: str
+        """
+
+        return self.__article
