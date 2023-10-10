@@ -42,7 +42,7 @@ def test_get_date():
            test_case.date.lower() == "2023-10-08T06:17:39+00:00".lower()
     
 def test_length_preprocessed():
-    assert len(test_case.article.split()) < 1000
+    assert len(test_case.article_raw.split()) < 1000
 
 def test_time_to_scrape():
     html = requests.get("https://nasional.kompas.com/read/2023/10/08/13173901/" + \
@@ -60,7 +60,7 @@ def test_get_title_2():
     assert test_case_2.title.lower() == "Reaksi Muhammadiyah hingga MUI Soal Konflik Hamas Vs Israel Memanas".lower()
 
 def test_length_preprocessed_2():
-    assert len(test_case_2.article.split()) < 1000
+    assert len(test_case_2.article_raw.split()) < 1000
 
 def test_time_to_scrape_2():
     html = requests.get("https://www.merdeka.com/peristiwa/reaksi-muhammadiyah" + \
@@ -85,7 +85,7 @@ def test_get_date_3():
            test_case_3.date.lower() == "2023-10-08 18:20:04".lower()
 
 def test_length_preprocessed_3():
-    assert len(test_case_3.article.split()) < 1000
+    assert len(test_case_3.article_raw.split()) < 1000
 
 def test_time_to_scrape_3():
     html = requests.get("https://www.cnnindonesia.com/nasional/20231008174210-617-1008627/" + \

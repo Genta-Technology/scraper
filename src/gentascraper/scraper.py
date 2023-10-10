@@ -61,7 +61,7 @@ class Scraper:
 
         self.__get_meta()
         self.__preprocess()
-        self.__get_article()
+        self.__get_article_raw()
 
     def __get_html(self, url: str) -> None:
         """
@@ -146,13 +146,13 @@ class Scraper:
 
         self.__body = body.prettify()
 
-    def __get_article(self) -> None:
+    def __get_article_raw(self) -> None:
         """
         Gets the article from the HTML string.
         """
 
         # extract text from the body
-        self.__article = self.text_from_html(self.__soup)
+        self.__article_raw = self.text_from_html(self.__soup)
         
     @staticmethod
     def tag_visible(element: elem.Tag) -> bool:
@@ -260,12 +260,12 @@ class Scraper:
         return self.__body
     
     @property
-    def article(self) -> str:
+    def article_raw(self) -> str:
         """
-        Gets the article.
+        Gets the article before fed to AI model.
 
         :return: The article.
         :rtype: str
         """
 
-        return self.__article
+        return self.__article_raw

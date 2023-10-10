@@ -28,7 +28,10 @@ dependencies = [
   "requests",
   "beautifulsoup4",
   "lxml",
-  "newspaper3k"
+  "newspaper3k",
+  "transformers",
+  "datasets",
+  "sentencepiece",
 ]
 
 [project.urls]

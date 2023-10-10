@@ -19,16 +19,18 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 """
 
 import multiprocessing.dummy as mp
+import pandas as pd
 
 from typing import List, Tuple
 
 from newspaper import Article
 from transformers import hf_argparser, BertTokenizerFast
+from datasets import Dataset
 
 from gentascraper import Scraper
 
 class DataGatherer():
-    def __init__(self) -> None:
+    def __init__(self, urls: List[str]) -> None:
         self.__dict__ = {
             'id': [],
             'url': [],
@@ -39,6 +41,100 @@ class DataGatherer():
         }
 
         self.tokenizer = BertTokenizerFast.from_pretrained('indobenchmark/indobert-base-p2')
+
+        self.__get_articles(urls)
+        self.__get_inputs(urls)
+        self.__get_indexes()
+
+        for i, url in enumerate(urls):
+            self.__dict__['id'].append(i)
+            self.__dict__['url'].append(url)
+
+    def to_csv(self, path: str) -> None:
+        """
+        Save data to csv file.
+        
+        :param path: path to save csv file
+        :type path: str
+        """
+
+        df = pd.DataFrame(self.__dict__)
+        df.to_csv(path, index=False)
+
+    def to_json(self, path: str) -> None:
+        """
+        Save data to json file.
+        
+        :param path: path to save json file
+        :type path: str
+        """
+
+        df = pd.DataFrame(self.__dict__)
+        df.to_json(path, orient='records')
+
+    def to_pickle(self, path: str) -> None:
+        """
+        Save data to pickle file.
+        
+        :param path: path to save pickle file
+        :type path: str
+        """
+
+        df = pd.DataFrame(self.__dict__)
+        df.to_pickle(path)
+
+    def to_dict(self) -> dict:
+        """
+        Save data to dictionary.
+        
+        :return: data in dictionary
+        :rtype: dict
+        """
+
+        return self.__dict__
+    
+    def to_list(self) -> List:
+        """
+        Save data to list.
+        
+        :return: data in list
+        :rtype: List
+        """
+
+        return list(self.__dict__.values())
+    
+    def to_dataset(self) -> Dataset:
+        """
+        Save data to dataset.
+        
+        :return: data in dataset
+        :rtype: Dataset
+        """
+
+        return Dataset.from_dict(self.__dict__)
+    
+    def push_to_hub(self, repo_name: str) -> None:
+        """
+        Push data to huggingface hub.
+        
+        :param repo_name: name of the repository
+        :type repo_name: str
+        """
+
+        dataset = self.to_dataset()
+        dataset.push_to_hub(repo_name)
+
+    def __str__(self) -> str:
+        return str(self.__dict__)
+
+    def __repr__(self) -> str:
+        return str(self.__dict__)
+
+    def __len__(self) -> int:
+        return len(self.__dict__['id'])
+
+    def __getitem__(self, key: str) -> List:
+        return self.__dict__[key]
 
     def __get_article(self, url: str) -> str:
         """
@@ -64,7 +160,7 @@ class DataGatherer():
         """
 
         with mp.Pool() as pool:
-            self.__dict__['label'].append(pool.map(self.get_article, urls))
+            self.__dict__['label'].append(pool.map(self.__get_article, urls))
     
     def __get_input(self, url: str) -> str:
         """
@@ -88,7 +184,7 @@ class DataGatherer():
         """
 
         with mp.Pool() as pool:
-            self.__dict__['input'].append(pool.map(self.get_input, urls))
+            self.__dict__['input'].append(pool.map(self.__get_input, urls))
 
     def __get_index(self, input: str, label: str) -> Tuple[int, int]:
         """
@@ -114,7 +210,8 @@ class DataGatherer():
         """
 
         with mp.Pool() as pool:
-            self.__dict__['start_pos'], self.__dict__['end_pos'] = zip(*pool.starmap(self.get_index, zip(self.__dict__['input'], self.__dict__['label'])))
+            self.__dict__['start_pos'], self.__dict__['end_pos'] = \
+                zip(*pool.starmap(self.__get_index, zip(self.__dict__['input'], self.__dict__['label'])))
 
     def __get_start_index(self, input_token_ids: List[int], label_token_ids: List[int]) -> int:
         """
@@ -128,11 +225,6 @@ class DataGatherer():
         :rtype: int
         """
         
-        # # tokenize input using BPE tokenizer
-        # input_tokens = self.tokenizer.tokenize(input, add_special_tokens=False, return_offsets_mapping=True)
-        # # tokenize label using BPE tokenizer
-        # label_tokens = self.tokenizer.tokenize(label, add_special_tokens=False, return_offsets_mapping=True)
-
         # take the first 5 tokens of label
         head_label_tokens = label_token_ids[:5]
 
@@ -159,12 +251,7 @@ class DataGatherer():
         :return: end index of label in input
         :rtype: int
         """
-
-        # # tokenize input using BPE tokenizer
-        # input_tokens = self.tokenizer.tokenize(input, add_special_tokens=False, return_offsets_mapping=True)
-        # # tokenize label using BPE tokenizer
-        # label_tokens = self.tokenizer.tokenize(label, add_special_tokens=False, return_offsets_mapping=True)
-
+        
         # take the last 5 tokens of label
         tail_label_tokens = label_token_ids[-5:]
 
