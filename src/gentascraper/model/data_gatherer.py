@@ -27,6 +27,8 @@ from newspaper import Article
 from transformers import hf_argparser, BertTokenizerFast
 from datasets import Dataset
 
+from gentascraper import Scraper
+
 
 class DataGatherer():
     """
