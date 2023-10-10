@@ -64,9 +64,9 @@ class DataGatherer():
     ... ]
     >>> data_gatherer = DataGatherer(urls)
     >>> data_gatherer.to_pandas()
-    ... id	url	input	label	start_pos	end_pos
-    ... 0	0	https://nasional.kompas.com/read/2023/10/10/14...	Koin ...	JAKARTA, KOMPAS.com - Mahkamah Konstitusi (MK)...	809	3494
-    ... 1	1	https://nasional.kompas.com/read/2023/10/10/17...	Koin ...	JAKARTA, KOMPAS.com - Presiden Joko Widodo aka...	795	2854
+    ... id	url	                                                title                                               ...
+    ... 0	https://nasional.kompas.com/read/2023/10/10/14...	JAKARTA, KOMPAS.com - Mahkamah Konstitusi (MK)...	...
+    ... 1	https://nasional.kompas.com/read/2023/10/10/17...	JAKARTA, KOMPAS.com - Presiden Joko Widodo aka...	...
     """
 
     def __init__(self, urls: List[str]) -> None:
@@ -212,7 +212,7 @@ class DataGatherer():
 
         with mp.Pool() as pool:
             articles = pool.map(self.__get_article, urls)
-            self.__data['input'], self.__data['label'] = zip(*articles)
+            self.__data['label'], self.__data['title'] = zip(*articles)
     
     def __get_input(self, url: str) -> str:
         """
