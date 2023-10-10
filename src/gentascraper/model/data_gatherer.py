@@ -27,11 +27,48 @@ from newspaper import Article
 from transformers import hf_argparser, BertTokenizerFast
 from datasets import Dataset
 
-from gentascraper import Scraper
 
 class DataGatherer():
+    """
+    Class to gather data from news sites based on newspaper3k.
+
+    :param urls: urls of the articles
+    :type urls: List[str]
+    
+    :ivar id: id of the article
+    :vartype id: List[int]
+    :ivar url: url of the article
+    :vartype url: List[str]
+    :ivar input: input text
+    :vartype input: List[str]
+    :ivar label: label text
+    :vartype label: List[str]
+    :ivar start_pos: start position of label in input
+    :vartype start_pos: List[int]
+    :ivar end_pos: end position of label in input
+    :vartype end_pos: List[int]
+
+    :ivar tokenizer: tokenizer to tokenize input and label
+    :vartype tokenizer: BertTokenizerFast
+
+    :return: data gatherer object
+    :rtype: DataGatherer
+
+    :example:
+    >>> from gentascraper import DataGatherer
+    >>> urls = [
+    ...     "https://nasional.kompas.com/read/2023/10/10/14253131/mk-putuskan-usia-capres-cawapres-16-oktober",
+    ...     "https://nasional.kompas.com/read/2023/10/10/17002281/jokowi-disebut-akan-kunjungi-china-dan-arab-saudi"
+    ... ]
+    >>> data_gatherer = DataGatherer(urls)
+    >>> data_gatherer.to_pandas()
+    ... id	url	input	label	start_pos	end_pos
+    ... 0	0	https://nasional.kompas.com/read/2023/10/10/14...	Koin ...	JAKARTA, KOMPAS.com - Mahkamah Konstitusi (MK)...	809	3494
+    ... 1	1	https://nasional.kompas.com/read/2023/10/10/17...	Koin ...	JAKARTA, KOMPAS.com - Presiden Joko Widodo aka...	795	2854
+    """
+
     def __init__(self, urls: List[str]) -> None:
-        self.__dict__ = {
+        self.__data = {
             'id': [],
             'url': [],
             'input': [],
@@ -47,8 +84,19 @@ class DataGatherer():
         self.__get_indexes()
 
         for i, url in enumerate(urls):
-            self.__dict__['id'].append(i)
-            self.__dict__['url'].append(url)
+            self.__data['id'].append(i)
+            self.__data['url'].append(url)
+
+    
+    def to_pandas(self) -> pd.DataFrame:
+        """
+        Save data to pandas dataframe.
+        
+        :return: data in pandas dataframe
+        :rtype: pd.DataFrame
+        """
+
+        return pd.DataFrame(self.__data)
 
     def to_csv(self, path: str) -> None:
         """
@@ -58,7 +106,7 @@ class DataGatherer():
         :type path: str
         """
 
-        df = pd.DataFrame(self.__dict__)
+        df = pd.DataFrame(self.__data)
         df.to_csv(path, index=False)
 
     def to_json(self, path: str) -> None:
@@ -69,7 +117,7 @@ class DataGatherer():
         :type path: str
         """
 
-        df = pd.DataFrame(self.__dict__)
+        df = pd.DataFrame(self.__data)
         df.to_json(path, orient='records')
 
     def to_pickle(self, path: str) -> None:
@@ -80,7 +128,7 @@ class DataGatherer():
         :type path: str
         """
 
-        df = pd.DataFrame(self.__dict__)
+        df = pd.DataFrame(self.__data)
         df.to_pickle(path)
 
     def to_dict(self) -> dict:
@@ -91,7 +139,7 @@ class DataGatherer():
         :rtype: dict
         """
 
-        return self.__dict__
+        return self.__data
     
     def to_list(self) -> List:
         """
@@ -101,7 +149,7 @@ class DataGatherer():
         :rtype: List
         """
 
-        return list(self.__dict__.values())
+        return list(self.__data.values())
     
     def to_dataset(self) -> Dataset:
         """
@@ -111,7 +159,7 @@ class DataGatherer():
         :rtype: Dataset
         """
 
-        return Dataset.from_dict(self.__dict__)
+        return Dataset.from_dict(self.__data)
     
     def push_to_hub(self, repo_name: str) -> None:
         """
@@ -125,16 +173,16 @@ class DataGatherer():
         dataset.push_to_hub(repo_name)
 
     def __str__(self) -> str:
-        return str(self.__dict__)
+        return str(self.__data)
 
     def __repr__(self) -> str:
-        return str(self.__dict__)
+        return str(self.__data)
 
     def __len__(self) -> int:
-        return len(self.__dict__['id'])
+        return len(self.__data['id'])
 
     def __getitem__(self, key: str) -> List:
-        return self.__dict__[key]
+        return self.__data[key]
 
     def __get_article(self, url: str) -> str:
         """
@@ -160,7 +208,7 @@ class DataGatherer():
         """
 
         with mp.Pool() as pool:
-            self.__dict__['label'].append(pool.map(self.__get_article, urls))
+            self.__data['label'] = pool.map(self.__get_article, urls)
     
     def __get_input(self, url: str) -> str:
         """
@@ -184,7 +232,7 @@ class DataGatherer():
         """
 
         with mp.Pool() as pool:
-            self.__dict__['input'].append(pool.map(self.__get_input, urls))
+            self.__data['input'] = pool.map(self.__get_input, urls)
 
     def __get_index(self, input: str, label: str) -> Tuple[int, int]:
         """
@@ -198,11 +246,11 @@ class DataGatherer():
         :rtype: Tuple[int, int]
         """
 
-        input_tokens = self.tokenizer.encode(input, add_special_tokens=False, return_offsets_mapping=True)
-        label_tokens = self.tokenizer.encode(label, add_special_tokens=False, return_offsets_mapping=True)
+        input_tokens = self.tokenizer(input, add_special_tokens=False, return_offsets_mapping=True)
+        label_tokens = self.tokenizer(label, add_special_tokens=False, return_offsets_mapping=True)
 
-        return self.__get_start_index(input_tokens['input_ids'], label_tokens['input_ids']), \
-            self.__get_end_index(input_tokens['input_ids'], label_tokens['input_ids'])
+        return input_tokens['offset_mapping'][self.__get_start_index(input_tokens['input_ids'], label_tokens['input_ids'])][0], \
+            input_tokens['offset_mapping'][self.__get_end_index(input_tokens['input_ids'], label_tokens['input_ids']) - 1][1]
     
     def __get_indexes(self) -> None:
         """
@@ -210,8 +258,8 @@ class DataGatherer():
         """
 
         with mp.Pool() as pool:
-            self.__dict__['start_pos'], self.__dict__['end_pos'] = \
-                zip(*pool.starmap(self.__get_index, zip(self.__dict__['input'], self.__dict__['label'])))
+            self.__data['start_pos'], self.__data['end_pos'] = \
+                zip(*pool.starmap(self.__get_index, zip(self.__data['input'], self.__data['label'])))
 
     def __get_start_index(self, input_token_ids: List[int], label_token_ids: List[int]) -> int:
         """
@@ -233,7 +281,7 @@ class DataGatherer():
         for i, token in enumerate(input_token_ids):
             if token == head_label_tokens[match_tokens]:
                 match_tokens += 1
-                if match_tokens == 5:
+                if match_tokens == len(head_label_tokens):
                     return i - len(head_label_tokens) + 1
             else:
                 match_tokens = 0
@@ -253,14 +301,14 @@ class DataGatherer():
         """
         
         # take the last 5 tokens of label
-        tail_label_tokens = label_token_ids[-5:]
+        tail_label_tokens = list(reversed(label_token_ids[-5:]))
 
         # get end index of label in input
         match_tokens = 0
         for i, token in enumerate(reversed(input_token_ids)):
             if token == tail_label_tokens[match_tokens]:
                 match_tokens += 1
-                if match_tokens == 5:
+                if match_tokens == len(tail_label_tokens):
                     return len(input_token_ids) - i + len(tail_label_tokens) - 1
             else:
                 match_tokens = 0
