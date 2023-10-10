@@ -73,6 +73,7 @@ class DataGatherer():
         self.__data = {
             'id': [],
             'url': [],
+            'title': [],
             'input': [],
             'label': [],
             'start_pos': [],
@@ -199,7 +200,7 @@ class DataGatherer():
         article = Article(url)
         article.download()
         article.parse()
-        return article.text
+        return article.text, article.title
 
     def __get_articles(self, urls: List[str]) -> None:
         """
@@ -210,7 +211,8 @@ class DataGatherer():
         """
 
         with mp.Pool() as pool:
-            self.__data['label'] = pool.map(self.__get_article, urls)
+            articles = pool.map(self.__get_article, urls)
+            self.__data['input'], self.__data['label'] = zip(*articles)
     
     def __get_input(self, url: str) -> str:
         """
