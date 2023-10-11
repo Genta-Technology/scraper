@@ -19,3 +19,4 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 """
 
 from .data_gatherer import DataGatherer
+from .model import Model

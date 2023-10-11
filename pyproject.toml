@@ -29,7 +29,7 @@ dependencies = [
   "beautifulsoup4",
   "lxml",
   "newspaper3k",
-  "transformers",
+  "transformers[tensorflow]",
   "datasets",
   "sentencepiece",
   "pandas"
