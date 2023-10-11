@@ -73,18 +73,19 @@ class DataGatherer():
         self.__data = {
             'id': [],
             'url': [],
-            'title': [],
-            'input': [],
-            'label': [],
-            'start_pos': [],
-            'end_pos': [],
+            'question': [],
+            'context': [],
+            'answers': []
         }
 
         self.tokenizer = BertTokenizerFast.from_pretrained('indobenchmark/indobert-base-p2')
 
-        self.__get_articles(urls)
+        articles, self.__data['question'] = self.__get_articles(urls)
+        start_indexes = self.__get_answers(articles)
+        self.__data['answers'] = [{'text': article, 'answer_start': start} \
+                                  for article, start in zip(articles, start_indexes)]
+
         self.__get_inputs(urls)
-        self.__get_indexes()
 
         for i, url in enumerate(urls):
             self.__data['id'].append(i)
@@ -202,17 +203,18 @@ class DataGatherer():
         article.parse()
         return article.text, article.title
 
-    def __get_articles(self, urls: List[str]) -> None:
+    def __get_articles(self, urls: List[str]) -> Tuple[List[str], List[str]]:
         """
         Get articles from urls using newspaper3k.
         
         :param urls: urls of the articles
         :type urls: List[str]
+        :return: articles text and titles
+        :rtype: Tuple[List[str], List[str]]
         """
 
         with mp.Pool() as pool:
-            articles = pool.map(self.__get_article, urls)
-            self.__data['label'], self.__data['title'] = zip(*articles)
+            return zip(*pool.starmap(self.__get_article, zip(urls, self.__data['question'])))
     
     def __get_input(self, url: str) -> str:
         """
@@ -236,7 +238,7 @@ class DataGatherer():
         """
 
         with mp.Pool() as pool:
-            self.__data['input'] = pool.map(self.__get_input, urls)
+            self.__data['context'] = pool.map(self.__get_input, urls)
 
     def __get_index(self, input: str, label: str) -> Tuple[int, int]:
         """
@@ -253,17 +255,15 @@ class DataGatherer():
         input_tokens = self.tokenizer(input, add_special_tokens=False, return_offsets_mapping=True)
         label_tokens = self.tokenizer(label, add_special_tokens=False, return_offsets_mapping=True)
 
-        return input_tokens['offset_mapping'][self.__get_start_index(input_tokens['input_ids'], label_tokens['input_ids'])][0], \
-            input_tokens['offset_mapping'][self.__get_end_index(input_tokens['input_ids'], label_tokens['input_ids']) - 1][1]
+        return input_tokens['offset_mapping'][self.__get_start_index(input_tokens['input_ids'], label_tokens['input_ids'])][0]
     
-    def __get_indexes(self) -> None:
+    def __get_answers(self, articles: List[str]) -> None:
         """
         Get start and end indexes of labels in inputs.
         """
 
         with mp.Pool() as pool:
-            self.__data['start_pos'], self.__data['end_pos'] = \
-                zip(*pool.starmap(self.__get_index, zip(self.__data['input'], self.__data['label'])))
+            return pool.map(self.__get_index, self.__data['context'], articles)
 
     def __get_start_index(self, input_token_ids: List[int], label_token_ids: List[int]) -> int:
         """
@@ -287,33 +287,6 @@ class DataGatherer():
                 match_tokens += 1
                 if match_tokens == len(head_label_tokens):
                     return i - len(head_label_tokens) + 1
-            else:
-                match_tokens = 0
-
-        return -1
-    
-    def __get_end_index(self, input_token_ids: List[int], label_token_ids: List[int]) -> int:
-        """
-        Get end index of label in input.
-        
-        :param input_token_ids: token ids of input
-        :type input_token_ids: List[int]
-        :param label_token_ids: token ids of label
-        :type label_token_ids: List[int]
-        :return: end index of label in input
-        :rtype: int
-        """
-        
-        # take the last 5 tokens of label
-        tail_label_tokens = list(reversed(label_token_ids[-5:]))
-
-        # get end index of label in input
-        match_tokens = 0
-        for i, token in enumerate(reversed(input_token_ids)):
-            if token == tail_label_tokens[match_tokens]:
-                match_tokens += 1
-                if match_tokens == len(tail_label_tokens):
-                    return len(input_token_ids) - i + len(tail_label_tokens) - 1
             else:
                 match_tokens = 0
 
