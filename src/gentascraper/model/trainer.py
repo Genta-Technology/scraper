@@ -31,6 +31,16 @@ from .model import Model
 
 
 class Trainer:
+    """
+    A class used to fine-tune a pre-trained transformer-based language model on a QA task.
+
+    :param checkpoint: The name of the pre-trained model to be fine-tuned.
+    :param batch_size: The batch size.
+    :param num_epochs: The number of epochs.
+    :param init_lr: The initial learning rate.
+    :param warmup_steps: The number of warmup steps.
+    """
+    
     def __init__(self, checkpoint: str, **kwargs) -> None:
         self.checkpoint = checkpoint
         self.batch_size = kwargs.get("batch_size", 32)
